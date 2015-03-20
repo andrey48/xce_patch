@@ -11,7 +11,13 @@ public class Main {
     public static final String[] ITEMS = {"Alenium", "Alienalloys"};
 
     public static void main(String[] args) {
+        boolean modified = false;
         try {
+            if (args.length < 1) {
+                System.out.print("USAGE: xce_patch <savefile>\n");
+                System.exit(-1);
+            }
+
             File saveFile = new File(args[0]);
             int saveSize = (int)saveFile.length();
             System.out.print("Save file size: " + saveSize + "\n");
@@ -24,7 +30,6 @@ public class Main {
             }
             input.close();
             System.out.print("Bytes read: " + res + "\n");
-
 
             int pos = search(buf, XENONAUTS.getBytes(), 0);
             if (pos > 0) {
@@ -41,7 +46,10 @@ public class Main {
                 IntBuffer props = ByteBuffer.wrap(buf, pos + SOLDIER_FLAGS.length() + 1 + 4 + skip, 12 * 4).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
                 for (int i = 0; i < 12; i++) {
                     System.out.print(String.format("%1$3d ", props.get(i)));
-                    if (props.get(i) < 96) props.put(96);
+                    if (props.get(i) < 96) {
+                        props.put(96);
+                        modified = true;
+                    }
                 }
                 System.out.print("\n");
             }
@@ -56,21 +64,24 @@ public class Main {
                 }
             }
 
-            File newFile = new File(args[0] + ".new");
-            if (!newFile.createNewFile()) {
-                System.err.print("ERROR: File already exists!\n");
-                System.exit(-1);
+            if (modified) {
+                File newFile = new File(args[0] + ".new");
+                if (!newFile.createNewFile()) {
+                    System.err.print("ERROR: File already exists!\n");
+                    System.exit(-1);
+                }
+                OutputStream output = new FileOutputStream(newFile);
+                output.write(buf, 0, saveSize);
+                output.close();
+                System.out.print(newFile.getName() + " created!\n");
             }
-            OutputStream output = new FileOutputStream(newFile);
-            output.write(buf, 0, saveSize);
-            output.close();
         } catch (Exception e) {
             System.err.print(e.toString() + "\n");
         }
     }
     public static int search(byte[] data, byte[] pattern, int start) {
         int i, j;
-        boolean diff = false;
+        boolean diff;
         if ((data.length-start) < pattern.length) return -1;
         for (i = start; i < (data.length - pattern.length); i++) {
             diff = false;
@@ -80,8 +91,7 @@ public class Main {
                     break;
                 }
             }
-            if (diff) continue;
-            else return i;
+            if (!diff) return i;
         }
         return -1;
     }
